@@ -3,11 +3,11 @@ package HttpComparison
 import (
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"time"
 
 	"github.com/adrg/strutil"
 	"github.com/adrg/strutil/metrics"
-	"github.com/wdahlenburg/raw_http_utils/utils"
 )
 
 type Similarity struct {
@@ -18,16 +18,13 @@ func (s *Similarity) CompareRequests(baseline *http.Response, responses []*http.
 	var differences []http.Response
 	// Can ultimately perform this multithreaded with a wg
 
-	rawBaseline := &utils.RawHttpResponse{
-		Response: baseline,
-	}
-
-	result, err := rawBaseline.GetRawResponse()
+	result, err := httputil.DumpResponse(baseline, true)
 	if err != nil {
 		return nil, err
 	}
 
 	baseline_str := string(result)
+	baseline.Body.Close()
 
 	for _, response := range responses {
 		weight := 1.0
@@ -35,15 +32,12 @@ func (s *Similarity) CompareRequests(baseline *http.Response, responses []*http.
 			weight = weight * 0.75 // Apply a 25% reduction if the status code does not match the baseline
 		}
 
-		raw := &utils.RawHttpResponse{
-			Response: response,
-		}
-
-		res, err := raw.GetRawResponse()
+		res, err := httputil.DumpResponse(response, true)
 		if err != nil {
 			return nil, err
 		}
 		response_str := string(res)
+		response.Body.Close()
 
 		start := time.Now()
 		hamming_similarity := strutil.Similarity(baseline_str, response_str, metrics.NewHamming())
@@ -82,7 +76,7 @@ func (s *Similarity) CompareRequests(baseline *http.Response, responses []*http.
 
 		sim := weight * jaccard_similarity
 		if sim < s.Threshhold {
-			fmt.Printf("Significant differentiation identified\n")
+			fmt.Printf("Significant differentiation identified - %.2f\n", sim)
 			differences = append(differences, *response)
 		}
 
