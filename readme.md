@@ -12,6 +12,8 @@ The significance threshold depends on the application using the library. In cert
 
 The base algorithm does a string comparison with the Jaccard index. It applies a 25% weight reduction if the HTTP status code changes.
 
+In the event you wish to compare responses against an error-based condition, pass in an empty string (`""`) as the baseline. The slice of responses are expected to have well-formed HTTP responses.
+
 ## Enhancements
 
 If you think you have a better algorithm, I'd encourage you to submit a PR and it'll get well tested.
